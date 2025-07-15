@@ -1,0 +1,11 @@
+
+# API通信
+pybotters==1.9.1
+requests==2.31.0
+
+# データ処理
+pandas==2.1.4
+numpy==1.24.4
+
+# テクニカル分析
+pandas_ta==0.3.14b0

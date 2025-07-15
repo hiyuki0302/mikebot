@@ -2,3 +2,5 @@
 data/
 *.key
 __pycache__/
+scripts/没/daily_report.py
+*.json
