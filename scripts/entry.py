@@ -161,7 +161,7 @@ class mikeBot:
                 try:
                     response = await self.client.fetch("POST", url=url, data=params)
                     text = response.text  
-                    response_json = json.loads(text).get()
+                    response_json = json.loads(text)
                     result_msg = response_json.get('retMsg', 'Unknown')
                     self.position_states[self.symbol] = {
                         'qty': qty,
@@ -194,7 +194,7 @@ class mikeBot:
                 try:
                     response = await self.client.fetch("POST", url=url, data=params)
                     text = response.text  
-                    response_json = json.loads(text).get()
+                    response_json = json.loads(text)
                     result_msg = response_json.get('retMsg', 'Unknown')
                     self.position_states[self.symbol] = {
                     'qty': qty,
