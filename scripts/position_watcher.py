@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import os
 import pybotters
+from pathlib import Path
 import asyncio
 import sys
 import json
@@ -10,7 +11,8 @@ from discord import notify_error_discord, notify_dual_discord, notify_discord
 if sys.platform.startswith('win'):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-with open('config_honban.json', encoding='utf-8') as f:
+config_path = Path(__file__).parent.parent / 'config' / 'config.json'
+with open(config_path, encoding='utf-8') as f:
     config = json.load(f)
 apis = {"bybit": [config['api_key'], config['api_secret']]}
 
@@ -163,10 +165,11 @@ async def main():
             if tasks:
                 await asyncio.gather(*tasks)
                 print(f"✅ ポジション監視完了 - {len(tasks)}件処理")
-                notify_dual_discord("✅ ポジションうぉっちゃ～動作正常")
+                notify_dual_discord(msg=f"✅ ポジションうぉっちゃ～{len(tasks)}処理執行")
             else:
                 print("📝 処理対象のポジションはありませんでした")
-                
+            
+            notify_dual_discord(msg="✅ ポジションうぉっちゃ～動作正常")
     except Exception as e:
         error_msg = traceback.format_exc()
         print(f"❌ メイン処理エラー: {str(e)}")

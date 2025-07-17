@@ -7,6 +7,7 @@
 
 import asyncio
 import sys
+from pathlib import Path
 import json
 import os
 import traceback
@@ -25,7 +26,8 @@ BALANCE_UPDATE_HOURS = 24       # 24時間ごとに基準残高を自動更新
 INITIAL_BALANCE = 30.0       # 初期値（初回のみ使用）
 
 # ファイル設定
-with open('config_honban.json', encoding='utf-8') as f:
+config_path = Path(__file__).parent.parent / 'config' / 'config.json'
+with open(config_path, encoding='utf-8') as f:
     config = json.load(f)
 
 apis = {"bybit": [config['api_key'], config['api_secret']]}
