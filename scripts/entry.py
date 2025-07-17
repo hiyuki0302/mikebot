@@ -1,4 +1,5 @@
 import traceback
+from pathlib import Path
 import sys
 import pybotters
 import asyncio
@@ -13,9 +14,10 @@ from discord import entry_discord, notify_error_discord, notify_dual_discord
 if sys.platform.startswith('win'):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-with open('config_honban.json', encoding='utf-8') as f:
+config_path = Path(__file__).parent.parent / 'config' / 'config.json'
+with open(config_path, encoding='utf-8') as f:
     config = json.load(f)
-
+    
 apis = {"bybit": [config['api_key'], config['api_secret']]}
 dual = []
 
@@ -68,16 +70,37 @@ class mikeBot:
         self.df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close", "volume", "quote_volume"]).astype(float)
         self.df["timestamp"] = pd.to_datetime(self.df["timestamp"].astype("int64"), unit='ms', utc=True) + pd.Timedelta(hours=9)
         self.df = self.df.sort_values("timestamp").reset_index(drop=True).dropna()
+        
         if self.df.empty: # データがうまく取得できていない場合スキップ
             notify_error_discord(subtitle="ローソク足データが空！",error_message=f"{self.symbol}のデータ取得失敗")
             return
-        self.df["ADX"] = ta.adx(self.df["high"], self.df["low"], self.df["close"], length=14)["ADX_14"]
+        
+        # ADXの計算とNoneチェック
+        adx_result = ta.adx(self.df["high"], self.df["low"], self.df["close"], length=14)
+        if adx_result is None or "ADX_14" not in adx_result:
+            notify_error_discord(subtitle="ADX計算エラー", error_message=f"{self.symbol}: ADX計算に失敗しました")
+            return
+        
+        self.df["ADX"] = adx_result["ADX_14"]
+        
+        # ADXカラムにNaNが含まれている場合のチェック
+        if self.df["ADX"].isna().all():
+            notify_error_discord(subtitle="ADX計算エラー", error_message=f"{self.symbol}: ADX値がすべてNaNです")
+            return
+        
+        # フィボナッチレベルの計算
         diff = self.df["high"] - self.df["low"]
         self.df["fibo_long"] = self.df["high"] - diff * 4.236
         self.df["fibo_short"] = self.df["low"] + diff * 4.236
         self.df["profit_long_1.5"] = self.df["high"] - diff * 1.5
         self.df["profit_short_1.5"] = self.df["low"] + diff * 1.5
+        
+        # デュアルフラクタル検出
         for i in range(len(self.df) - 144, len(self.df) - 2): # 144本前までのデュアルフラクタル検出
+            # インデックスの境界チェック
+            if i < 2 or i >= len(self.df) - 2:
+                continue
+                
             is_high_fractal = all(self.df.iloc[i]['high'] > self.df.iloc[j]['high'] for j in [i - 2, i - 1, i + 1, i + 2])
             is_low_fractal = all(self.df.iloc[i]['low'] < self.df.iloc[j]['low'] for j in [i - 2, i - 1, i + 1, i + 2])
 
@@ -124,7 +147,7 @@ class mikeBot:
 
             # --- ロングエントリー ---
             if target_row['close'] <= target_price_long and target_row['ADX'] <= self.padx[self.symbol]:
-                profit_long  = (Decimal(str(row['profit_long_1.5']))  // tick_size) * tick_size 
+                profit_long = (Decimal(str(row['profit_long_1.5'])) // Decimal(str(tick_size))) * Decimal(str(tick_size))
                 params = {
                     'category': "linear",
                     'symbol': self.symbol,
@@ -137,7 +160,9 @@ class mikeBot:
                 # 注文処理
                 try:
                     response = await self.client.fetch("POST", url=url, data=params)
-                    result_msg = response.data['retMsg']
+                    text = response.text  
+                    response_json = json.loads(text).get()
+                    result_msg = response_json.get('retMsg', 'Unknown')
                     self.position_states[self.symbol] = {
                         'qty': qty,
                         'entry_price': target_row['close'],
@@ -156,7 +181,7 @@ class mikeBot:
             
             # --- ショートエントリー ---
             elif target_row['close'] >= target_price_short and target_row['ADX'] <= self.padx[self.symbol]:
-                profit_short = (Decimal(str(row['profit_short_1.5'])) // tick_size) * tick_size
+                profit_short = (Decimal(str(row['profit_short_1.5'])) // Decimal(str(tick_size))) * Decimal(str(tick_size))
                 params = {
                     'category': "linear",
                     'symbol': self.symbol,
@@ -168,7 +193,9 @@ class mikeBot:
                 
                 try:
                     response = await self.client.fetch("POST", url=url, data=params)
-                    result_msg = response.data['retMsg']
+                    text = response.text  
+                    response_json = json.loads(text).get()
+                    result_msg = response_json.get('retMsg', 'Unknown')
                     self.position_states[self.symbol] = {
                     'qty': qty,
                     'entry_price': target_row['close'],
