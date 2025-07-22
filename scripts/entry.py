@@ -26,12 +26,11 @@ class mikeBot:
         self.symbol = symbol
         self.leverage = 20
         self.padx = {'BTCUSDT':24, 'ETHUSDT':22, 'SUIUSDT':28, 'SOLUSDT':21}
-        self.volatility_threshold = {'BTCUSDT':0.4, 'ETHUSDT':1.4, 'SUIUSDT':1.4, 'SOLUSDT': 1.3}
+        self.volatility_threshold = {'BTCUSDT':1.3, 'ETHUSDT':0.7, 'SUIUSDT':1.5, 'SOLUSDT': 1.6}
         self.results = []
         self.df = pd.DataFrame()
 
         # 注文
-        self.risk_pct = 0.07
         self.min_lot_sizes = {
             'BTCUSDT': 0.001,
             'ETHUSDT': 0.01,
@@ -146,7 +145,7 @@ class mikeBot:
             tick_size = self.ticksize[self.symbol]
 
             # --- ロングエントリー ---
-            if target_row['close'] <= target_price_long and target_row['ADX'] <= self.padx[self.symbol]:
+            if target_row['close'] <= target_price_long: # and target_row['ADX'] <= self.padx[self.symbol]
                 profit_long = (Decimal(str(row['profit_long_1.5'])) // Decimal(str(tick_size))) * Decimal(str(tick_size))
                 params = {
                     'category': "linear",
@@ -180,7 +179,7 @@ class mikeBot:
                 entry_discord(result=result_msg, symbol=self.symbol, qty=qty, entry_price=target_row['close'], take_profit=row['profit_long_1.5'], direction="LONG")
             
             # --- ショートエントリー ---
-            elif target_row['close'] >= target_price_short and target_row['ADX'] <= self.padx[self.symbol]:
+            elif target_row['close'] >= target_price_short : # and target_row['ADX'] <= self.padx[self.symbol]
                 profit_short = (Decimal(str(row['profit_short_1.5'])) // Decimal(str(tick_size))) * Decimal(str(tick_size))
                 params = {
                     'category': "linear",
