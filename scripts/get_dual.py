@@ -57,19 +57,36 @@ class mikeneko_dual:
         dual_indices = np.where(dual_fractal)[0] + 2
         duals = self.df.iloc[dual_indices]
         dual_fractals[self.timeframe] = pd.DataFrame(duals)
-        df_dual = dual_fractals[self.timeframe]
-
+        dual_fractal = high_fractals & low_fractals
+        dual_indices = np.where(dual_fractal)[0] + 2
+        
+        if len(dual_indices) > 0:
+            duals = self.df.iloc[dual_indices].copy()
+            duals['symbol'] = self.symbol
+            duals['timeframe'] = self.timeframe
+            return duals
+    
 async def run(symbol,client):
-    timeframes = ['15m', '1h', '4h']
+    results = []
+    timeframes = ['15', '60', '240']
     for timeframe in timeframes:
         bot = mikeneko_dual(symbol, timeframe, client)
-        await bot.get_Kline()
+        result = await bot.get_Kline()
+        if result is not None and not result.empty:
+            results.append(result)
+    return results
 
 async def main():
+    all_results = []
     symbols = ['BTCUSDT', 'ETHUSDT', 'SUIUSDT', 'SOLUSDT']
-    
     async with pybotters.Client() as client:
-        await asyncio.gather(*(run(symbol, client)for symbol in symbols ))
+        symbol_results =    await asyncio.gather(*(run(symbol, client)for symbol in symbols ))
+
+    for results in symbol_results:
+            all_results.extend(results)
+
+    combined_df = pd.concat(all_results, ignore_index=True)
+    print(combined_df)
 
 if __name__ == "__main__":
     asyncio.run(main())
